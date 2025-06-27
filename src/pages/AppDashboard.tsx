@@ -9,8 +9,8 @@ const AppDashboard = () => {
   const navigate = useNavigate();
   const [userType, setUserType] = useState<'customer' | 'vendor' | null>(null);
 
-  // In a real app, this would check authentication status
-  const isAuthenticated = false;
+  // Temporarily bypass authentication for development
+  const isAuthenticated = true; // Changed from false to true
 
   if (!isAuthenticated) {
     return (
@@ -96,7 +96,7 @@ const AppDashboard = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Vendor Dashboard</h3>
-                    <p className="text-sm text-gray-600">Scan QR codes and manage payments</p>
+                    <p className="text-sm text-gray-600">scan QR codes and manage payments</p>
                   </div>
                 </div>
               </CardContent>

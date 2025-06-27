@@ -9,7 +9,108 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      transactions: {
+        Row: {
+          amount: number
+          customer_id: string
+          description: string | null
+          id: string
+          timestamp: string | null
+          vendor_id: string
+        }
+        Insert: {
+          amount: number
+          customer_id: string
+          description?: string | null
+          id?: string
+          timestamp?: string | null
+          vendor_id: string
+        }
+        Update: {
+          amount?: number
+          customer_id?: string
+          description?: string | null
+          id?: string
+          timestamp?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          balance: number | null
+          clerk_id: string
+          created_at: string | null
+          daily_limit: number | null
+          id: string
+          name: string
+          payment_pointer: string
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          balance?: number | null
+          clerk_id: string
+          created_at?: string | null
+          daily_limit?: number | null
+          id: string
+          name: string
+          payment_pointer: string
+          role: string
+          updated_at?: string | null
+        }
+        Update: {
+          balance?: number | null
+          clerk_id?: string
+          created_at?: string | null
+          daily_limit?: number | null
+          id?: string
+          name?: string
+          payment_pointer?: string
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      vendors: {
+        Row: {
+          approved: boolean | null
+          created_at: string | null
+          id: string
+          name: string
+          payment_pointer: string
+        }
+        Insert: {
+          approved?: boolean | null
+          created_at?: string | null
+          id?: string
+          name: string
+          payment_pointer: string
+        }
+        Update: {
+          approved?: boolean | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          payment_pointer?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

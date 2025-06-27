@@ -1,11 +1,10 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
-import { QrCode, User, User2 } from "lucide-react";
+import { QrCode, User, User2, ArrowLeft } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -13,12 +12,8 @@ const Login = () => {
   const [authMethod, setAuthMethod] = useState<'email' | 'phone' | null>(null);
 
   const handleLogin = () => {
-    // In a real app, this would integrate with Clerk
-    if (userType === 'customer') {
-      navigate('/user-dashboard');
-    } else {
-      navigate('/vendor-dashboard');
-    }
+    // In a real app, this would integrate with Clerk and then redirect to app
+    navigate('/app');
   };
 
   if (!userType) {
@@ -29,7 +24,7 @@ const Login = () => {
             <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <QrCode className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to PaperPay+</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Join PaperPay+</h1>
             <p className="text-gray-600">Choose how you'll use PaperPay+</p>
           </div>
 
@@ -75,7 +70,8 @@ const Login = () => {
               onClick={() => navigate('/')}
               className="text-orange-600 border-orange-300 hover:bg-orange-50"
             >
-              Back to Home
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Landing Page
             </Button>
           </div>
         </div>

@@ -5,12 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { QrCode, Wallet, Shield, User, Bell, History, RefreshCw, Copy, Eye, EyeOff } from "lucide-react";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { useUserTransactions } from "@/hooks/useUserTransactions";
+import { useUserVendors } from "@/hooks/useUserVendors";
+import AddVendorDialog from "@/components/AddVendorDialog";
 
 const UserDashboard = () => {
   const navigate = useNavigate();
-  const [walletBalance] = useState(450.75);
-  const [dailyLimit] = useState(50);
-  const [todaySpent] = useState(36);
+  const { profile, wallet, loading: profileLoading } = useUserProfile();
+  const { transactions, loading: transactionsLoading } = useUserTransactions();
+  const { userVendors, loading: vendorsLoading, fetchUserVendors } = useUserVendors();
+  
   const [activeQRIndex] = useState(0);
   const [showBackupCodes, setShowBackupCodes] = useState(false);
   const [qrFrozen, setQrFrozen] = useState(false);
@@ -23,18 +28,25 @@ const UserDashboard = () => {
     isUsed: i < activeQRIndex
   }));
 
-  const recentTransactions = [
-    { id: 1, vendor: "Taxi Services", amount: -24, time: "2 hours ago", status: "completed" },
-    { id: 2, vendor: "Spaza Shop", amount: -12, time: "4 hours ago", status: "completed" },
-    { id: 3, vendor: "Street Food", amount: -8, time: "Yesterday", status: "completed" },
-    { id: 4, vendor: "Taxi Services", amount: -22, time: "Yesterday", status: "completed" },
-  ];
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900">Loading...</h2>
+        </div>
+      </div>
+    );
+  }
 
-  const trustedVendors = [
-    { name: "Taxi Services", spent: 24, limit: 30, status: "active" },
-    { name: "Spaza Shop", spent: 12, limit: 20, status: "active" },
-    { name: "Street Food", spent: 0, limit: 15, status: "active" },
-  ];
+  if (!profile || !wallet) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900">Profile not found</h2>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50">
@@ -66,23 +78,23 @@ const UserDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-orange-100 mb-1">Wallet Balance</p>
-                <h2 className="text-3xl font-bold">R {walletBalance.toFixed(2)}</h2>
+                <h2 className="text-3xl font-bold">R {wallet.balance.toFixed(2)}</h2>
               </div>
               <Wallet className="w-12 h-12 text-orange-200" />
             </div>
             <div className="mt-4 pt-4 border-t border-orange-400">
               <div className="flex justify-between text-sm">
-                <span className="text-orange-100">Daily Limit: R {dailyLimit}</span>
-                <span className="text-orange-100">Spent Today: R {todaySpent}</span>
+                <span className="text-orange-100">Daily Limit: R {wallet.daily_limit}</span>
+                <span className="text-orange-100">Spent Today: R {wallet.daily_spent}</span>
               </div>
               <div className="mt-2 bg-orange-400 rounded-full h-2">
                 <div 
                   className="bg-white rounded-full h-2 transition-all duration-300"
-                  style={{ width: `${(todaySpent / dailyLimit) * 100}%` }}
+                  style={{ width: `${wallet.daily_limit > 0 ? (wallet.daily_spent / wallet.daily_limit) * 100 : 0}%` }}
                 />
               </div>
               <p className="text-sm text-orange-100 mt-1">
-                R {dailyLimit - todaySpent} remaining today
+                R {(wallet.daily_limit - wallet.daily_spent).toFixed(2)} remaining today
               </p>
             </div>
           </CardContent>
@@ -184,35 +196,38 @@ const UserDashboard = () => {
         {/* Trusted Vendors */}
         <Card className="border-orange-200">
           <CardHeader>
-            <CardTitle className="text-gray-900">Trusted Vendors</CardTitle>
-            <p className="text-sm text-gray-600">
-              Pre-approved vendors where you can use your QR code
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-gray-900">Trusted Vendors</CardTitle>
+                <p className="text-sm text-gray-600">
+                  Pre-approved vendors where you can use your QR code
+                </p>
+              </div>
+              <AddVendorDialog onVendorAdded={fetchUserVendors} />
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {trustedVendors.map((vendor, index) => (
-              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2">
-                    <h4 className="font-medium text-gray-900">{vendor.name}</h4>
-                    <Badge variant="outline" className="text-xs">
-                      {vendor.status}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <div className="flex-1 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-orange-500 rounded-full h-2 transition-all duration-300"
-                        style={{ width: `${(vendor.spent / vendor.limit) * 100}%` }}
-                      />
+            {vendorsLoading ? (
+              <p className="text-gray-500 text-center py-4">Loading vendors...</p>
+            ) : userVendors.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">No vendors added yet. Add your first vendor to get started!</p>
+            ) : (
+              userVendors.map((vendor) => (
+                <div key={vendor.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <h4 className="font-medium text-gray-900">{vendor.vendor_name}</h4>
+                      <Badge variant="outline" className="text-xs">
+                        active
+                      </Badge>
                     </div>
-                    <span className="text-sm text-gray-600">
-                      R{vendor.spent}/R{vendor.limit}
-                    </span>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {vendor.vendor_payment_pointer}
+                    </p>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
 
@@ -233,25 +248,31 @@ const UserDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentTransactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                      <Wallet className="w-5 h-5 text-orange-600" />
+              {transactionsLoading ? (
+                <p className="text-gray-500 text-center py-4">Loading transactions...</p>
+              ) : transactions.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">No transactions yet</p>
+              ) : (
+                transactions.map((transaction) => (
+                  <div key={transaction.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                        <Wallet className="w-5 h-5 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{transaction.vendor_name}</p>
+                        <p className="text-sm text-gray-600">{new Date(transaction.timestamp).toLocaleDateString()}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{transaction.vendor}</p>
-                      <p className="text-sm text-gray-600">{transaction.time}</p>
+                    <div className="text-right">
+                      <p className="font-medium text-red-600">-R {transaction.amount.toFixed(2)}</p>
+                      <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
+                        completed
+                      </Badge>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-red-600">R {Math.abs(transaction.amount).toFixed(2)}</p>
-                    <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
-                      {transaction.status}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

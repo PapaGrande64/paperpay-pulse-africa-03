@@ -1,23 +1,36 @@
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { QrCode, Wallet, User, Bell, Search } from "lucide-react";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { useTransactions } from "@/hooks/useTransactions";
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
-  const [todayEarnings] = useState(342.50);
-  const [monthEarnings] = useState(8750.25);
-  const [transactionCount] = useState(24);
+  const { profile, vendorStats, loading: profileLoading } = useUserProfile();
+  const { transactions, loading: transactionsLoading } = useTransactions();
 
-  const recentTransactions = [
-    { id: 1, amount: 24, customer: "Customer #1234", time: "2 mins ago", status: "completed" },
-    { id: 2, amount: 45, customer: "Customer #5678", time: "15 mins ago", status: "completed" },
-    { id: 3, amount: 12, customer: "Customer #9012", time: "1 hour ago", status: "completed" },
-    { id: 4, amount: 18, customer: "Customer #3456", time: "2 hours ago", status: "completed" },
-  ];
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900">Loading...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900">Profile not found</h2>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
@@ -50,7 +63,7 @@ const VendorDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-green-100 mb-1">Today's Earnings</p>
-                  <h2 className="text-2xl font-bold">R {todayEarnings.toFixed(2)}</h2>
+                  <h2 className="text-2xl font-bold">R {vendorStats?.today_earnings?.toFixed(2) || '0.00'}</h2>
                 </div>
                 <Wallet className="w-8 h-8 text-green-200" />
               </div>
@@ -62,7 +75,7 @@ const VendorDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 mb-1">This Month</p>
-                  <h2 className="text-2xl font-bold text-gray-900">R {monthEarnings.toFixed(2)}</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">R {vendorStats?.month_earnings?.toFixed(2) || '0.00'}</h2>
                 </div>
               </div>
             </CardContent>
@@ -73,7 +86,7 @@ const VendorDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 mb-1">Transactions</p>
-                  <h2 className="text-2xl font-bold text-gray-900">{transactionCount}</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">{vendorStats?.transaction_count || 0}</h2>
                 </div>
               </div>
             </CardContent>
@@ -106,25 +119,31 @@ const VendorDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentTransactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <Wallet className="w-5 h-5 text-green-600" />
+              {transactionsLoading ? (
+                <p className="text-gray-500 text-center py-4">Loading transactions...</p>
+              ) : transactions.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">No transactions yet</p>
+              ) : (
+                transactions.map((transaction) => (
+                  <div key={transaction.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <Wallet className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">R {transaction.amount.toFixed(2)}</p>
+                        <p className="text-sm text-gray-600">{transaction.customer_name || 'Customer'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">R {transaction.amount.toFixed(2)}</p>
-                      <p className="text-sm text-gray-600">{transaction.customer}</p>
+                    <div className="text-right">
+                      <Badge variant="default" className="bg-green-100 text-green-800">
+                        completed
+                      </Badge>
+                      <p className="text-sm text-gray-500 mt-1">{new Date(transaction.timestamp).toLocaleDateString()}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <Badge variant="default" className="bg-green-100 text-green-800">
-                      {transaction.status}
-                    </Badge>
-                    <p className="text-sm text-gray-500 mt-1">{transaction.time}</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

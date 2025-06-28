@@ -29,19 +29,41 @@ const UserOnboarding = ({ onComplete }: UserOnboardingProps) => {
     
     setLoading(true);
     try {
-      const { error } = await supabase
+      // Create user profile
+      const userId = crypto.randomUUID();
+      const { error: userError } = await supabase
         .from('users')
-        .upsert({
-          id: crypto.randomUUID(),
+        .insert({
+          id: userId,
           user_id: user.id,
           name: user.email || 'User',
           role,
+        });
+
+      if (userError) throw userError;
+
+      // Create wallet for the user
+      const { error: walletError } = await supabase
+        .from('wallets')
+        .insert({
+          user_id: userId,
           payment_pointer: paymentPointer,
           balance: parseFloat(balance) || 0,
           daily_limit: parseFloat(dailyLimit) || 0,
         });
 
-      if (error) throw error;
+      if (walletError) throw walletError;
+
+      // Create vendor stats if user is a vendor
+      if (role === 'vendor') {
+        const { error: statsError } = await supabase
+          .from('vendor_stats')
+          .insert({
+            vendor_id: userId,
+          });
+
+        if (statsError) throw statsError;
+      }
 
       toast({
         title: "Profile Created!",
@@ -155,7 +177,7 @@ const UserOnboarding = ({ onComplete }: UserOnboardingProps) => {
               className="mt-1 border-orange-200 focus:border-orange-400"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Enter your current wallet balance manually
+              Enter your current wallet balance
             </p>
           </div>
 

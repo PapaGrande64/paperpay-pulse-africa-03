@@ -1,11 +1,11 @@
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@clerk/clerk-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './useAuth';
 
 export interface UserProfile {
   id: string;
-  clerk_id: string;
+  user_id: string;
   name: string;
   role: 'customer' | 'vendor';
   payment_pointer: string;
@@ -16,14 +16,14 @@ export interface UserProfile {
 }
 
 export const useUserProfile = () => {
-  const { user, isLoaded } = useUser();
+  const { user, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!isLoaded || !user) {
+      if (authLoading || !user) {
         setLoading(false);
         return;
       }
@@ -32,7 +32,7 @@ export const useUserProfile = () => {
         const { data, error } = await supabase
           .from('users')
           .select('*')
-          .eq('clerk_id', user.id)
+          .eq('user_id', user.id)
           .single();
 
         if (error) {
@@ -59,7 +59,7 @@ export const useUserProfile = () => {
     };
 
     fetchProfile();
-  }, [user, isLoaded]);
+  }, [user, authLoading]);
 
   const refreshProfile = async () => {
     if (!user) return;
@@ -67,7 +67,7 @@ export const useUserProfile = () => {
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .eq('clerk_id', user.id)
+      .eq('user_id', user.id)
       .single();
 
     if (!error && data) {

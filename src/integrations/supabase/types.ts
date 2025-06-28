@@ -54,7 +54,6 @@ export type Database = {
       users: {
         Row: {
           balance: number | null
-          clerk_id: string
           created_at: string | null
           daily_limit: number | null
           id: string
@@ -62,10 +61,10 @@ export type Database = {
           payment_pointer: string
           role: string
           updated_at: string | null
+          user_id: string
         }
         Insert: {
           balance?: number | null
-          clerk_id: string
           created_at?: string | null
           daily_limit?: number | null
           id: string
@@ -73,10 +72,10 @@ export type Database = {
           payment_pointer: string
           role: string
           updated_at?: string | null
+          user_id: string
         }
         Update: {
           balance?: number | null
-          clerk_id?: string
           created_at?: string | null
           daily_limit?: number | null
           id?: string
@@ -84,6 +83,7 @@ export type Database = {
           payment_pointer?: string
           role?: string
           updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }

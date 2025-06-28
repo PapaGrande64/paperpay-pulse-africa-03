@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useUser } from "@clerk/clerk-react";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Wallet, User, User2 } from "lucide-react";
@@ -15,7 +15,7 @@ interface UserOnboardingProps {
 }
 
 const UserOnboarding = ({ onComplete }: UserOnboardingProps) => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [role, setRole] = useState<'customer' | 'vendor'>('customer');
@@ -33,8 +33,8 @@ const UserOnboarding = ({ onComplete }: UserOnboardingProps) => {
         .from('users')
         .upsert({
           id: crypto.randomUUID(),
-          clerk_id: user.id,
-          name: user.fullName || user.emailAddresses[0]?.emailAddress || 'User',
+          user_id: user.id,
+          name: user.email || 'User',
           role,
           payment_pointer: paymentPointer,
           balance: parseFloat(balance) || 0,

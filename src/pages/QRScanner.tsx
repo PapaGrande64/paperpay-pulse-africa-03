@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, QrCode, User, DollarSign, CheckCircle } from "lucide-react";
+import { ArrowLeft, QrCode, User, DollarSign, CheckCircle, Camera } from "lucide-react";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -20,6 +20,64 @@ const QRScanner = () => {
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const handleOpenCamera = () => {
+    // Check if the browser supports camera access
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then((stream) => {
+          // Create a video element to show the camera feed
+          const video = document.createElement('video');
+          video.srcObject = stream;
+          video.autoplay = true;
+          video.style.position = 'fixed';
+          video.style.top = '0';
+          video.style.left = '0';
+          video.style.width = '100%';
+          video.style.height = '100%';
+          video.style.zIndex = '9999';
+          video.style.objectFit = 'cover';
+          
+          // Add a close button
+          const closeBtn = document.createElement('button');
+          closeBtn.innerHTML = '×';
+          closeBtn.style.position = 'fixed';
+          closeBtn.style.top = '20px';
+          closeBtn.style.right = '20px';
+          closeBtn.style.width = '50px';
+          closeBtn.style.height = '50px';
+          closeBtn.style.borderRadius = '50%';
+          closeBtn.style.backgroundColor = 'white';
+          closeBtn.style.border = 'none';
+          closeBtn.style.fontSize = '24px';
+          closeBtn.style.cursor = 'pointer';
+          closeBtn.style.zIndex = '10000';
+          
+          closeBtn.onclick = () => {
+            stream.getTracks().forEach(track => track.stop());
+            document.body.removeChild(video);
+            document.body.removeChild(closeBtn);
+          };
+          
+          document.body.appendChild(video);
+          document.body.appendChild(closeBtn);
+        })
+        .catch((error) => {
+          console.error('Error accessing camera:', error);
+          toast({
+            title: "Camera Error",
+            description: "Unable to access camera. Please check permissions.",
+            variant: "destructive",
+          });
+        });
+    } else {
+      toast({
+        title: "Camera Not Supported",
+        description: "Your browser doesn't support camera access.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSearchCustomer = async () => {
     if (!paymentPointer.trim()) {
       toast({
@@ -32,20 +90,34 @@ const QRScanner = () => {
 
     setLoading(true);
     try {
-      // Find customer by payment pointer
+      console.log('Searching for payment pointer:', paymentPointer);
+      
+      // Find customer by payment pointer in wallets table
       const { data: walletData, error: walletError } = await supabase
         .from('wallets')
         .select(`
           *,
           user:users(*)
         `)
-        .eq('payment_pointer', paymentPointer)
+        .eq('payment_pointer', paymentPointer.trim())
         .single();
 
-      if (walletError || !walletData) {
+      console.log('Wallet search result:', { walletData, walletError });
+
+      if (walletError) {
+        console.error('Wallet search error:', walletError);
         toast({
           title: "Customer Not Found",
           description: "No customer found with this payment pointer",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!walletData || !walletData.user) {
+        toast({
+          title: "Customer Not Found",
+          description: "No user associated with this payment pointer",
           variant: "destructive",
         });
         return;
@@ -60,6 +132,8 @@ const QRScanner = () => {
         return;
       }
 
+      console.log('Customer found:', walletData.user.name);
+      
       setCustomerInfo({
         wallet: walletData,
         user: walletData.user
@@ -89,8 +163,8 @@ const QRScanner = () => {
 
     const paymentAmount = parseFloat(amount);
     
-    // Check if customer has sufficient balance
-    if (customerInfo.wallet.balance < paymentAmount) {
+    // Check if customer has sufficient balance (only for customers with balance)
+    if (customerInfo.wallet.balance !== null && customerInfo.wallet.balance < paymentAmount) {
       toast({
         title: "Insufficient Funds",
         description: "Customer does not have sufficient balance",
@@ -99,19 +173,27 @@ const QRScanner = () => {
       return;
     }
 
-    // Check daily limit
-    const remainingLimit = customerInfo.wallet.daily_limit - customerInfo.wallet.daily_spent;
-    if (paymentAmount > remainingLimit) {
-      toast({
-        title: "Daily Limit Exceeded",
-        description: `Payment exceeds daily spending limit. Remaining: R${remainingLimit.toFixed(2)}`,
-        variant: "destructive",
-      });
-      return;
+    // Check daily limit (only for customers with daily limits)
+    if (customerInfo.wallet.daily_limit !== null && customerInfo.wallet.daily_spent !== null) {
+      const remainingLimit = customerInfo.wallet.daily_limit - customerInfo.wallet.daily_spent;
+      if (paymentAmount > remainingLimit) {
+        toast({
+          title: "Daily Limit Exceeded",
+          description: `Payment exceeds daily spending limit. Remaining: R${remainingLimit.toFixed(2)}`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setLoading(true);
     try {
+      console.log('Processing payment:', {
+        vendor_id: profile?.id,
+        customer_id: customerInfo.user.id,
+        amount: paymentAmount
+      });
+
       // Create transaction
       const { error: transactionError } = await supabase
         .from('transactions')
@@ -122,7 +204,12 @@ const QRScanner = () => {
           description: `Payment to ${profile?.name}`,
         });
 
-      if (transactionError) throw transactionError;
+      if (transactionError) {
+        console.error('Transaction error:', transactionError);
+        throw transactionError;
+      }
+
+      console.log('Transaction created successfully');
 
       toast({
         title: "Payment Successful!",
@@ -154,9 +241,13 @@ const QRScanner = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-gray-100 p-8 rounded-lg text-center">
-                <QrCode className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-sm text-gray-600">Position QR code within the frame</p>
+              <div 
+                className="bg-gray-100 p-8 rounded-lg text-center cursor-pointer hover:bg-gray-200 transition-colors"
+                onClick={handleOpenCamera}
+              >
+                <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-sm text-gray-600">Tap to open camera</p>
+                <p className="text-xs text-gray-500 mt-1">Position QR code within the frame</p>
               </div>
               
               <div className="text-center text-gray-500">
@@ -203,18 +294,24 @@ const QRScanner = () => {
               </div>
 
               <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Available Balance:</span>
-                  <span className="font-semibold">R {customerInfo.wallet.balance.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Daily Limit:</span>
-                  <span className="font-semibold">R {customerInfo.wallet.daily_limit.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Remaining Today:</span>
-                  <span className="font-semibold">R {(customerInfo.wallet.daily_limit - customerInfo.wallet.daily_spent).toFixed(2)}</span>
-                </div>
+                {customerInfo.wallet.balance !== null && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Available Balance:</span>
+                    <span className="font-semibold">R {customerInfo.wallet.balance.toFixed(2)}</span>
+                  </div>
+                )}
+                {customerInfo.wallet.daily_limit !== null && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Daily Limit:</span>
+                    <span className="font-semibold">R {customerInfo.wallet.daily_limit.toFixed(2)}</span>
+                  </div>
+                )}
+                {customerInfo.wallet.daily_limit !== null && customerInfo.wallet.daily_spent !== null && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Remaining Today:</span>
+                    <span className="font-semibold">R {(customerInfo.wallet.daily_limit - customerInfo.wallet.daily_spent).toFixed(2)}</span>
+                  </div>
+                )}
               </div>
 
               <Button

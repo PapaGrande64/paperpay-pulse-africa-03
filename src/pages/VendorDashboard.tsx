@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { QrCode, Wallet, User, Bell, Search } from "lucide-react";
+import { QrCode, Wallet, Bell, Search, ArrowLeft } from "lucide-react";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useTransactions } from "@/hooks/useTransactions";
+import ProfileDialog from "@/components/ProfileDialog";
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
@@ -39,17 +40,34 @@ const VendorDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/')}
+                className="text-gray-600 hover:text-gray-900"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back
+              </Button>
+              <div 
+                className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center cursor-pointer"
+                onClick={() => navigate('/')}
+              >
                 <QrCode className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">PaperPay+</h1>
+                <h1 
+                  className="text-xl font-bold text-gray-900 cursor-pointer"
+                  onClick={() => navigate('/')}
+                >
+                  PaperPay+
+                </h1>
                 <p className="text-sm text-gray-600">Vendor Dashboard</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
               <Bell className="w-6 h-6 text-gray-400" />
-              <User className="w-6 h-6 text-gray-400" />
+              <ProfileDialog />
             </div>
           </div>
         </div>

@@ -51,6 +51,39 @@ export type Database = {
           },
         ]
       }
+      user_transactions: {
+        Row: {
+          amount: number
+          id: string
+          status: string | null
+          timestamp: string
+          transaction_type: string | null
+          user_id: string
+          vendor_id: string
+          vendor_name: string
+        }
+        Insert: {
+          amount: number
+          id?: string
+          status?: string | null
+          timestamp?: string
+          transaction_type?: string | null
+          user_id: string
+          vendor_id: string
+          vendor_name: string
+        }
+        Update: {
+          amount?: number
+          id?: string
+          status?: string | null
+          timestamp?: string
+          transaction_type?: string | null
+          user_id?: string
+          vendor_id?: string
+          vendor_name?: string
+        }
+        Relationships: []
+      }
       user_vendors: {
         Row: {
           added_at: string | null

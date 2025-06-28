@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { Wallet, User, User2 } from "lucide-react";
+import { Wallet, User, User2, ArrowLeft } from "lucide-react";
 
 interface UserOnboardingProps {
   onComplete: () => void;
@@ -42,8 +42,8 @@ const UserOnboarding = ({ onComplete }: UserOnboardingProps) => {
         name: name || user.email || 'User',
         role,
         paymentPointer,
-        balance: parseFloat(balance) || 0,
-        dailyLimit: parseFloat(dailyLimit) || 0,
+        balance: role === 'customer' ? parseFloat(balance) || 0 : null,
+        dailyLimit: role === 'customer' ? parseFloat(dailyLimit) || 0 : null,
       });
 
       // Create user profile first
@@ -66,16 +66,18 @@ const UserOnboarding = ({ onComplete }: UserOnboardingProps) => {
 
       console.log('User created successfully:', userData);
 
-      // Create wallet for the user with actual input values
-      const { data: walletData, error: walletError } = await supabase
+      // Create wallet for the user with role-specific values
+      const walletData = {
+        user_id: userId,
+        payment_pointer: paymentPointer,
+        balance: role === 'customer' ? parseFloat(balance) || 0 : null,
+        daily_limit: role === 'customer' ? parseFloat(dailyLimit) || 0 : null,
+        daily_spent: role === 'customer' ? 0 : null,
+      };
+
+      const { data: createdWallet, error: walletError } = await supabase
         .from('wallets')
-        .insert({
-          user_id: userId,
-          payment_pointer: paymentPointer,
-          balance: parseFloat(balance) || 0,
-          daily_limit: parseFloat(dailyLimit) || 0,
-          daily_spent: 0,
-        })
+        .insert(walletData)
         .select()
         .single();
 
@@ -84,7 +86,7 @@ const UserOnboarding = ({ onComplete }: UserOnboardingProps) => {
         throw walletError;
       }
 
-      console.log('Wallet created successfully:', walletData);
+      console.log('Wallet created successfully:', createdWallet);
 
       // Create vendor stats if user is a vendor
       if (role === 'vendor') {
@@ -110,7 +112,7 @@ const UserOnboarding = ({ onComplete }: UserOnboardingProps) => {
 
       toast({
         title: "Profile Created!",
-        description: "Your PaperPay+ profile has been set up successfully.",
+        description: `Your PaperPay+ ${role} profile has been set up successfully.`,
       });
       
       onComplete();
@@ -200,8 +202,15 @@ const UserOnboarding = ({ onComplete }: UserOnboardingProps) => {
           <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <Wallet className="w-6 h-6 text-white" />
           </div>
-          <CardTitle className="text-2xl text-gray-900">Setup Your Wallet</CardTitle>
-          <p className="text-gray-600">Configure your Interledger payment details</p>
+          <CardTitle className="text-2xl text-gray-900">
+            Setup Your {role === 'customer' ? 'Wallet' : 'Payment Details'}
+          </CardTitle>
+          <p className="text-gray-600">
+            {role === 'customer' 
+              ? 'Configure your Interledger payment details and account limits'
+              : 'Enter your payment pointer to receive payments'
+            }
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
@@ -220,41 +229,45 @@ const UserOnboarding = ({ onComplete }: UserOnboardingProps) => {
             </p>
           </div>
 
-          <div>
-            <Label htmlFor="balance" className="text-gray-700">
-              Current Wallet Balance (R)
-            </Label>
-            <Input
-              id="balance"
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              value={balance}
-              onChange={(e) => setBalance(e.target.value)}
-              className="mt-1 border-orange-200 focus:border-orange-400"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Enter your current wallet balance
-            </p>
-          </div>
+          {role === 'customer' && (
+            <>
+              <div>
+                <Label htmlFor="balance" className="text-gray-700">
+                  Current Account Balance (R)
+                </Label>
+                <Input
+                  id="balance"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={balance}
+                  onChange={(e) => setBalance(e.target.value)}
+                  className="mt-1 border-orange-200 focus:border-orange-400"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter your current account balance
+                </p>
+              </div>
 
-          <div>
-            <Label htmlFor="daily-limit" className="text-gray-700">
-              Daily Spending Limit (R)
-            </Label>
-            <Input
-              id="daily-limit"
-              type="number"
-              step="0.01"
-              placeholder="500.00"
-              value={dailyLimit}
-              onChange={(e) => setDailyLimit(e.target.value)}
-              className="mt-1 border-orange-200 focus:border-orange-400"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Set your daily spending limit
-            </p>
-          </div>
+              <div>
+                <Label htmlFor="daily-limit" className="text-gray-700">
+                  Daily Spending Limit (R)
+                </Label>
+                <Input
+                  id="daily-limit"
+                  type="number"
+                  step="0.01"
+                  placeholder="500.00"
+                  value={dailyLimit}
+                  onChange={(e) => setDailyLimit(e.target.value)}
+                  className="mt-1 border-orange-200 focus:border-orange-400"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Set your daily spending limit
+                </p>
+              </div>
+            </>
+          )}
 
           <div className="flex space-x-3">
             <Button 
@@ -262,11 +275,12 @@ const UserOnboarding = ({ onComplete }: UserOnboardingProps) => {
               onClick={() => setStep(1)}
               className="flex-1 border-orange-300 text-orange-600 hover:bg-orange-50"
             >
+              <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
             <Button 
               onClick={handleSaveProfile}
-              disabled={!paymentPointer || loading}
+              disabled={!paymentPointer || (role === 'customer' && (!balance || !dailyLimit)) || loading}
               className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
             >
               {loading ? 'Setting up...' : 'Complete Setup'}

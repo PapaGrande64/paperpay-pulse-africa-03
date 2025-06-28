@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { QrCode, Wallet, Shield, User, Bell, History, RefreshCw, Copy, Eye, EyeOff } from "lucide-react";
+import { QrCode, Wallet, Shield, Bell, History, RefreshCw, Copy, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useUserTransactions } from "@/hooks/useUserTransactions";
 import { useUserVendors } from "@/hooks/useUserVendors";
 import AddVendorDialog from "@/components/AddVendorDialog";
+import ProfileDialog from "@/components/ProfileDialog";
 
 const UserDashboard = () => {
   const navigate = useNavigate();
@@ -55,17 +56,34 @@ const UserDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-full flex items-center justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/')}
+                className="text-gray-600 hover:text-gray-900"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back
+              </Button>
+              <div 
+                className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-full flex items-center justify-center cursor-pointer"
+                onClick={() => navigate('/')}
+              >
                 <QrCode className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">PaperPay+</h1>
+                <h1 
+                  className="text-xl font-bold text-gray-900 cursor-pointer"
+                  onClick={() => navigate('/')}
+                >
+                  PaperPay+
+                </h1>
                 <p className="text-sm text-gray-600">Customer Dashboard</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
               <Bell className="w-6 h-6 text-gray-400" />
-              <User className="w-6 h-6 text-gray-400" />
+              <ProfileDialog />
             </div>
           </div>
         </div>
@@ -78,23 +96,27 @@ const UserDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-orange-100 mb-1">Wallet Balance</p>
-                <h2 className="text-3xl font-bold">R {wallet.balance.toFixed(2)}</h2>
+                <h2 className="text-3xl font-bold">R {wallet.balance?.toFixed(2) || '0.00'}</h2>
               </div>
               <Wallet className="w-12 h-12 text-orange-200" />
             </div>
             <div className="mt-4 pt-4 border-t border-orange-400">
               <div className="flex justify-between text-sm">
-                <span className="text-orange-100">Daily Limit: R {wallet.daily_limit}</span>
-                <span className="text-orange-100">Spent Today: R {wallet.daily_spent}</span>
+                <span className="text-orange-100">Daily Limit: R {wallet.daily_limit?.toFixed(2) || '0.00'}</span>
+                <span className="text-orange-100">Spent Today: R {wallet.daily_spent?.toFixed(2) || '0.00'}</span>
               </div>
               <div className="mt-2 bg-orange-400 rounded-full h-2">
                 <div 
                   className="bg-white rounded-full h-2 transition-all duration-300"
-                  style={{ width: `${wallet.daily_limit > 0 ? (wallet.daily_spent / wallet.daily_limit) * 100 : 0}%` }}
+                  style={{ 
+                    width: `${(wallet.daily_limit && wallet.daily_limit > 0) 
+                      ? Math.min((wallet.daily_spent || 0) / wallet.daily_limit * 100, 100) 
+                      : 0}%` 
+                  }}
                 />
               </div>
               <p className="text-sm text-orange-100 mt-1">
-                R {(wallet.daily_limit - wallet.daily_spent).toFixed(2)} remaining today
+                R {((wallet.daily_limit || 0) - (wallet.daily_spent || 0)).toFixed(2)} remaining today
               </p>
             </div>
           </CardContent>

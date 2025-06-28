@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, QrCode, User, DollarSign, CheckCircle, Camera } from "lucide-react";
+import { ArrowLeft, QrCode, DollarSign, CheckCircle, Camera } from "lucide-react";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -14,18 +14,15 @@ const QRScanner = () => {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
   const { toast } = useToast();
-  const [step, setStep] = useState(1); // 1: Enter payment pointer, 2: Customer info, 3: Payment amount, 4: Success
+  const [step, setStep] = useState(1); // 1: Enter payment pointer and amount, 2: Success
   const [paymentPointer, setPaymentPointer] = useState('');
-  const [customerInfo, setCustomerInfo] = useState<any>(null);
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleOpenCamera = () => {
-    // Check if the browser supports camera access
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices.getUserMedia({ video: true })
         .then((stream) => {
-          // Create a video element to show the camera feed
           const video = document.createElement('video');
           video.srcObject = stream;
           video.autoplay = true;
@@ -37,7 +34,6 @@ const QRScanner = () => {
           video.style.zIndex = '9999';
           video.style.objectFit = 'cover';
           
-          // Add a close button
           const closeBtn = document.createElement('button');
           closeBtn.innerHTML = '×';
           closeBtn.style.position = 'fixed';
@@ -78,7 +74,7 @@ const QRScanner = () => {
     }
   };
 
-  const handleSearchCustomer = async () => {
+  const handleProcessPayment = async () => {
     if (!paymentPointer.trim()) {
       toast({
         title: "Error",
@@ -88,70 +84,6 @@ const QRScanner = () => {
       return;
     }
 
-    setLoading(true);
-    try {
-      console.log('Searching for payment pointer:', paymentPointer);
-      
-      // Find customer by payment pointer in wallets table
-      const { data: walletData, error: walletError } = await supabase
-        .from('wallets')
-        .select(`
-          *,
-          user:users(*)
-        `)
-        .eq('payment_pointer', paymentPointer.trim())
-        .single();
-
-      console.log('Wallet search result:', { walletData, walletError });
-
-      if (walletError) {
-        console.error('Wallet search error:', walletError);
-        toast({
-          title: "Customer Not Found",
-          description: "No customer found with this payment pointer",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!walletData || !walletData.user) {
-        toast({
-          title: "Customer Not Found",
-          description: "No user associated with this payment pointer",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (walletData.user.role !== 'customer') {
-        toast({
-          title: "Invalid Account",
-          description: "This payment pointer belongs to a vendor account",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('Customer found:', walletData.user.name);
-      
-      setCustomerInfo({
-        wallet: walletData,
-        user: walletData.user
-      });
-      setStep(2);
-    } catch (error: any) {
-      console.error('Error finding customer:', error);
-      toast({
-        title: "Error",
-        description: "Failed to find customer. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleProcessPayment = async () => {
     if (!amount || parseFloat(amount) <= 0) {
       toast({
         title: "Error",
@@ -162,36 +94,14 @@ const QRScanner = () => {
     }
 
     const paymentAmount = parseFloat(amount);
-    
-    // Check if customer has sufficient balance (only for customers with balance)
-    if (customerInfo.wallet.balance !== null && customerInfo.wallet.balance < paymentAmount) {
-      toast({
-        title: "Insufficient Funds",
-        description: "Customer does not have sufficient balance",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check daily limit (only for customers with daily limits)
-    if (customerInfo.wallet.daily_limit !== null && customerInfo.wallet.daily_spent !== null) {
-      const remainingLimit = customerInfo.wallet.daily_limit - customerInfo.wallet.daily_spent;
-      if (paymentAmount > remainingLimit) {
-        toast({
-          title: "Daily Limit Exceeded",
-          description: `Payment exceeds daily spending limit. Remaining: R${remainingLimit.toFixed(2)}`,
-          variant: "destructive",
-        });
-        return;
-      }
-    }
 
     setLoading(true);
     try {
-      console.log('Processing payment:', {
+      console.log('Creating transaction:', {
         vendor_id: profile?.id,
-        customer_id: customerInfo.user.id,
-        amount: paymentAmount
+        customer_id: 'dummy-customer-id', // Using dummy since we're not searching for real customers
+        amount: paymentAmount,
+        description: `Payment to ${profile?.name}`
       });
 
       // Create transaction
@@ -199,9 +109,9 @@ const QRScanner = () => {
         .from('transactions')
         .insert({
           vendor_id: profile?.id,
-          customer_id: customerInfo.user.id,
+          customer_id: 'dummy-customer-id', // Using dummy customer ID
           amount: paymentAmount,
-          description: `Payment to ${profile?.name}`,
+          description: `Payment from ${paymentPointer}`,
         });
 
       if (transactionError) {
@@ -213,10 +123,10 @@ const QRScanner = () => {
 
       toast({
         title: "Payment Successful!",
-        description: `Received R${paymentAmount.toFixed(2)} from ${customerInfo.user.name}`,
+        description: `Received R${paymentAmount.toFixed(2)} from ${paymentPointer}`,
       });
 
-      setStep(4);
+      setStep(2);
     } catch (error: any) {
       console.error('Error processing payment:', error);
       toast({
@@ -237,7 +147,7 @@ const QRScanner = () => {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <QrCode className="w-5 h-5" />
-                <span>Scan Customer QR</span>
+                <span>Process Payment</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -251,7 +161,7 @@ const QRScanner = () => {
               </div>
               
               <div className="text-center text-gray-500">
-                <p className="text-sm">Or enter payment pointer manually</p>
+                <p className="text-sm">Or enter details manually</p>
               </div>
 
               <div className="space-y-2">
@@ -262,81 +172,6 @@ const QRScanner = () => {
                   value={paymentPointer}
                   onChange={(e) => setPaymentPointer(e.target.value)}
                 />
-              </div>
-
-              <Button
-                onClick={handleSearchCustomer}
-                disabled={loading}
-                className="w-full"
-              >
-                {loading ? 'Searching...' : 'Find Customer'}
-              </Button>
-            </CardContent>
-          </Card>
-        );
-
-      case 2:
-        return (
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <User className="w-5 h-5" />
-                <span>Customer Details</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <User className="w-8 h-8 text-blue-600" />
-                </div>
-                <h3 className="font-semibold text-lg">{customerInfo.user.name}</h3>
-                <p className="text-sm text-gray-600 font-mono">{customerInfo.wallet.payment_pointer}</p>
-              </div>
-
-              <div className="space-y-2">
-                {customerInfo.wallet.balance !== null && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Available Balance:</span>
-                    <span className="font-semibold">R {customerInfo.wallet.balance.toFixed(2)}</span>
-                  </div>
-                )}
-                {customerInfo.wallet.daily_limit !== null && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Daily Limit:</span>
-                    <span className="font-semibold">R {customerInfo.wallet.daily_limit.toFixed(2)}</span>
-                  </div>
-                )}
-                {customerInfo.wallet.daily_limit !== null && customerInfo.wallet.daily_spent !== null && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Remaining Today:</span>
-                    <span className="font-semibold">R {(customerInfo.wallet.daily_limit - customerInfo.wallet.daily_spent).toFixed(2)}</span>
-                  </div>
-                )}
-              </div>
-
-              <Button
-                onClick={() => setStep(3)}
-                className="w-full"
-              >
-                Continue to Payment
-              </Button>
-            </CardContent>
-          </Card>
-        );
-
-      case 3:
-        return (
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <DollarSign className="w-5 h-5" />
-                <span>Enter Amount</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Charging:</p>
-                <p className="font-semibold">{customerInfo.user.name}</p>
               </div>
 
               <div className="space-y-2">
@@ -367,23 +202,23 @@ const QRScanner = () => {
 
               <Button
                 onClick={handleProcessPayment}
-                disabled={loading || !amount}
+                disabled={loading || !amount || !paymentPointer.trim()}
                 className="w-full bg-green-500 hover:bg-green-600"
               >
-                {loading ? 'Processing...' : `Charge R${amount || '0.00'}`}
+                {loading ? 'Processing...' : `Process Payment R${amount || '0.00'}`}
               </Button>
             </CardContent>
           </Card>
         );
 
-      case 4:
+      case 2:
         return (
           <Card className="w-full max-w-md">
             <CardContent className="p-8 text-center">
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-green-600 mb-2">Payment Successful!</h2>
               <p className="text-gray-600 mb-4">
-                You have received R{amount} from {customerInfo.user.name}
+                You have received R{amount} from {paymentPointer}
               </p>
               
               <div className="space-y-3">
@@ -391,7 +226,6 @@ const QRScanner = () => {
                   onClick={() => {
                     setStep(1);
                     setPaymentPointer('');
-                    setCustomerInfo(null);
                     setAmount('');
                   }}
                   className="w-full bg-green-500 hover:bg-green-600"

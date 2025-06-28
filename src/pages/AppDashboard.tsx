@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { QrCode, Shield, ArrowLeft } from "lucide-react";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import UserOnboarding from "@/components/UserOnboarding";
+import { useEffect } from "react";
 
 const AppDashboard = () => {
   const navigate = useNavigate();
@@ -15,6 +16,17 @@ const AppDashboard = () => {
   const handleOnboardingComplete = () => {
     refreshProfile();
   };
+
+  // Handle navigation based on profile role
+  useEffect(() => {
+    if (profile && !loading && !needsOnboarding) {
+      if (profile.role === 'customer') {
+        navigate('/user-dashboard');
+      } else if (profile.role === 'vendor') {
+        navigate('/vendor-dashboard');
+      }
+    }
+  }, [profile, loading, needsOnboarding, navigate]);
 
   return (
     <>
@@ -72,8 +84,15 @@ const AppDashboard = () => {
         ) : needsOnboarding ? (
           <UserOnboarding onComplete={handleOnboardingComplete} />
         ) : profile ? (
-          // Redirect to appropriate dashboard based on role
-          profile.role === 'customer' ? navigate('/user-dashboard') : navigate('/vendor-dashboard')
+          // Show loading while navigation happens
+          <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                <QrCode className="w-8 h-8 text-white" />
+              </div>
+              <p className="text-gray-600">Redirecting to your dashboard...</p>
+            </div>
+          </div>
         ) : (
           <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 flex items-center justify-center">
             <p className="text-gray-600">Something went wrong. Please try again.</p>

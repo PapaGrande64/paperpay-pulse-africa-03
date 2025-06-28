@@ -43,7 +43,12 @@ export const useUserProfile = () => {
             console.error('Error fetching profile:', error);
           }
         } else {
-          setProfile(data);
+          // Type cast the role to ensure TypeScript compatibility
+          const typedProfile: UserProfile = {
+            ...data,
+            role: data.role as 'customer' | 'vendor'
+          };
+          setProfile(typedProfile);
           setNeedsOnboarding(false);
         }
       } catch (error) {
@@ -66,7 +71,12 @@ export const useUserProfile = () => {
       .single();
 
     if (!error && data) {
-      setProfile(data);
+      // Type cast the role to ensure TypeScript compatibility
+      const typedProfile: UserProfile = {
+        ...data,
+        role: data.role as 'customer' | 'vendor'
+      };
+      setProfile(typedProfile);
       setNeedsOnboarding(false);
     }
   };

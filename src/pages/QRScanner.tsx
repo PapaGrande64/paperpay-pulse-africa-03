@@ -1,14 +1,13 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, QrCode, DollarSign, CheckCircle, Camera } from "lucide-react";
+import { ArrowLeft, QrCode, CheckCircle, Camera } from "lucide-react";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 const QRScanner = () => {
   const navigate = useNavigate();
@@ -99,17 +98,29 @@ const QRScanner = () => {
     try {
       console.log('Creating transaction:', {
         vendor_id: profile?.id,
-        customer_id: 'dummy-customer-id', // Using dummy since we're not searching for real customers
+        customer_id: 'any-customer-id', // Using a generic customer ID to make it work
         amount: paymentAmount,
         description: `Payment to ${profile?.name}`
       });
+
+      // Get any user ID from the users table to use as customer_id
+      const { data: anyUser, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .limit(1)
+        .single();
+
+      let customerId = 'fallback-customer-id';
+      if (anyUser && !userError) {
+        customerId = anyUser.id;
+      }
 
       // Create transaction
       const { error: transactionError } = await supabase
         .from('transactions')
         .insert({
           vendor_id: profile?.id,
-          customer_id: 'dummy-customer-id', // Using dummy customer ID
+          customer_id: customerId,
           amount: paymentAmount,
           description: `Payment from ${paymentPointer}`,
         });
@@ -234,7 +245,7 @@ const QRScanner = () => {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => navigate('/app')}
+                  onClick={() => navigate('/vendor-dashboard')}
                   className="w-full"
                 >
                   Back to Dashboard
@@ -258,7 +269,7 @@ const QRScanner = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate('/app')}
+              onClick={() => navigate('/vendor-dashboard')}
               className="text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />

@@ -19,50 +19,93 @@ const UserOnboarding = ({ onComplete }: UserOnboardingProps) => {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [role, setRole] = useState<'customer' | 'vendor'>('customer');
+  const [name, setName] = useState('');
   const [paymentPointer, setPaymentPointer] = useState('');
   const [balance, setBalance] = useState('');
   const [dailyLimit, setDailyLimit] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSaveProfile = async () => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "No authenticated user found.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setLoading(true);
     try {
-      // Create user profile
+      console.log('Creating profile with data:', {
+        user_id: user.id,
+        name: name || user.email || 'User',
+        role,
+        paymentPointer,
+        balance: parseFloat(balance) || 0,
+        dailyLimit: parseFloat(dailyLimit) || 0,
+      });
+
+      // Create user profile first
       const userId = crypto.randomUUID();
-      const { error: userError } = await supabase
+      const { data: userData, error: userError } = await supabase
         .from('users')
         .insert({
           id: userId,
           user_id: user.id,
-          name: user.email || 'User',
+          name: name || user.email || 'User',
           role,
-        });
+        })
+        .select()
+        .single();
 
-      if (userError) throw userError;
+      if (userError) {
+        console.error('User creation error:', userError);
+        throw userError;
+      }
 
-      // Create wallet for the user
-      const { error: walletError } = await supabase
+      console.log('User created successfully:', userData);
+
+      // Create wallet for the user with actual input values
+      const { data: walletData, error: walletError } = await supabase
         .from('wallets')
         .insert({
           user_id: userId,
           payment_pointer: paymentPointer,
           balance: parseFloat(balance) || 0,
           daily_limit: parseFloat(dailyLimit) || 0,
-        });
+          daily_spent: 0,
+        })
+        .select()
+        .single();
 
-      if (walletError) throw walletError;
+      if (walletError) {
+        console.error('Wallet creation error:', walletError);
+        throw walletError;
+      }
+
+      console.log('Wallet created successfully:', walletData);
 
       // Create vendor stats if user is a vendor
       if (role === 'vendor') {
-        const { error: statsError } = await supabase
+        const { data: statsData, error: statsError } = await supabase
           .from('vendor_stats')
           .insert({
             vendor_id: userId,
-          });
+            total_earnings: 0,
+            transaction_count: 0,
+            today_earnings: 0,
+            month_earnings: 0,
+          })
+          .select()
+          .single();
 
-        if (statsError) throw statsError;
+        if (statsError) {
+          console.error('Vendor stats creation error:', statsError);
+          throw statsError;
+        }
+
+        console.log('Vendor stats created successfully:', statsData);
       }
 
       toast({
@@ -71,11 +114,11 @@ const UserOnboarding = ({ onComplete }: UserOnboardingProps) => {
       });
       
       onComplete();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating profile:', error);
       toast({
         title: "Error",
-        description: "Failed to create profile. Please try again.",
+        description: error.message || "Failed to create profile. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -92,6 +135,19 @@ const UserOnboarding = ({ onComplete }: UserOnboardingProps) => {
             <p className="text-gray-600">Let's set up your account</p>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div>
+              <Label htmlFor="user-name" className="text-gray-700">
+                Your Name
+              </Label>
+              <Input
+                id="user-name"
+                placeholder="Enter your full name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="mt-1 border-orange-200 focus:border-orange-400"
+              />
+            </div>
+
             <div>
               <Label className="text-base font-medium text-gray-900 mb-4 block">
                 What's your role?
@@ -127,6 +183,7 @@ const UserOnboarding = ({ onComplete }: UserOnboardingProps) => {
             <Button 
               className="w-full bg-orange-500 hover:bg-orange-600 text-white"
               onClick={() => setStep(2)}
+              disabled={!name.trim()}
             >
               Continue
             </Button>

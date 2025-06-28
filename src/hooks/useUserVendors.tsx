@@ -21,25 +21,51 @@ export const useUserVendors = () => {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // First get the user vendors
+      const { data: userVendorData, error: userVendorError } = await supabase
         .from('user_vendors')
-        .select(`
-          *,
-          vendor:users!vendor_id(name),
-          vendor_wallet:wallets!vendor_id(payment_pointer)
-        `)
+        .select('*')
         .eq('user_id', profile.id)
         .order('added_at', { ascending: false });
 
-      if (error) throw error;
+      if (userVendorError) throw userVendorError;
 
-      const formattedVendors: UserVendor[] = data?.map(uv => ({
-        id: uv.id,
-        vendor_id: uv.vendor_id,
-        vendor_name: uv.vendor?.name || 'Unknown Vendor',
-        vendor_payment_pointer: uv.vendor_wallet?.payment_pointer || '',
-        added_at: uv.added_at,
-      })) || [];
+      // Then get vendor details and wallet info separately
+      const vendorIds = userVendorData?.map(uv => uv.vendor_id) || [];
+      
+      if (vendorIds.length === 0) {
+        setUserVendors([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data: vendorDetails, error: vendorError } = await supabase
+        .from('users')
+        .select('id, name')
+        .in('id', vendorIds);
+
+      if (vendorError) throw vendorError;
+
+      const { data: walletDetails, error: walletError } = await supabase
+        .from('wallets')
+        .select('user_id, payment_pointer')
+        .in('user_id', vendorIds);
+
+      if (walletError) throw walletError;
+
+      // Combine the data
+      const formattedVendors: UserVendor[] = userVendorData?.map(uv => {
+        const vendor = vendorDetails?.find(v => v.id === uv.vendor_id);
+        const wallet = walletDetails?.find(w => w.user_id === uv.vendor_id);
+        
+        return {
+          id: uv.id,
+          vendor_id: uv.vendor_id,
+          vendor_name: vendor?.name || 'Unknown Vendor',
+          vendor_payment_pointer: wallet?.payment_pointer || '',
+          added_at: uv.added_at,
+        };
+      }) || [];
 
       setUserVendors(formattedVendors);
     } catch (error) {

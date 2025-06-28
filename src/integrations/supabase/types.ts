@@ -9,13 +9,232 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      transactions: {
+        Row: {
+          amount: number
+          customer_id: string
+          description: string | null
+          id: string
+          timestamp: string | null
+          vendor_id: string
+        }
+        Insert: {
+          amount: number
+          customer_id: string
+          description?: string | null
+          id?: string
+          timestamp?: string | null
+          vendor_id: string
+        }
+        Update: {
+          amount?: number
+          customer_id?: string
+          description?: string | null
+          id?: string
+          timestamp?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_vendors: {
+        Row: {
+          added_at: string | null
+          id: string
+          user_id: string | null
+          vendor_id: string | null
+        }
+        Insert: {
+          added_at?: string | null
+          id?: string
+          user_id?: string | null
+          vendor_id?: string | null
+        }
+        Update: {
+          added_at?: string | null
+          id?: string
+          user_id?: string | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_vendors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_vendors_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          role: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          role: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          role?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vendor_stats: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_transaction_date: string | null
+          month_earnings: number | null
+          today_earnings: number | null
+          total_earnings: number | null
+          transaction_count: number | null
+          updated_at: string | null
+          vendor_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_transaction_date?: string | null
+          month_earnings?: number | null
+          today_earnings?: number | null
+          total_earnings?: number | null
+          transaction_count?: number | null
+          updated_at?: string | null
+          vendor_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_transaction_date?: string | null
+          month_earnings?: number | null
+          today_earnings?: number | null
+          total_earnings?: number | null
+          transaction_count?: number | null
+          updated_at?: string | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_stats_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendors: {
+        Row: {
+          approved: boolean | null
+          created_at: string | null
+          id: string
+          name: string
+          payment_pointer: string
+        }
+        Insert: {
+          approved?: boolean | null
+          created_at?: string | null
+          id?: string
+          name: string
+          payment_pointer: string
+        }
+        Update: {
+          approved?: boolean | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          payment_pointer?: string
+        }
+        Relationships: []
+      }
+      wallets: {
+        Row: {
+          balance: number | null
+          created_at: string | null
+          daily_limit: number | null
+          daily_spent: number | null
+          id: string
+          last_reset_date: string | null
+          payment_pointer: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          balance?: number | null
+          created_at?: string | null
+          daily_limit?: number | null
+          daily_spent?: number | null
+          id?: string
+          last_reset_date?: string | null
+          payment_pointer: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          balance?: number | null
+          created_at?: string | null
+          daily_limit?: number | null
+          daily_spent?: number | null
+          id?: string
+          last_reset_date?: string | null
+          payment_pointer?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      reset_daily_spending: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

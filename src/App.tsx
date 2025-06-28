@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
 import AppDashboard from "./pages/AppDashboard";
-import Login from "./pages/Login";
+import Auth from "./pages/Auth";
 import UserDashboard from "./pages/UserDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import QRScanner from "./pages/QRScanner";
@@ -24,7 +24,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/app" element={<AppDashboard />} />
-          <Route path="/login" element={<Login />} />
+          <Route path="/auth" element={<Auth />} />
           <Route path="/user-dashboard" element={<UserDashboard />} />
           <Route path="/vendor-dashboard" element={<VendorDashboard />} />
           <Route path="/qr-scanner" element={<QRScanner />} />
